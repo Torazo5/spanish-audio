@@ -21,19 +21,37 @@ else:
 # Initialize TTS with a multi-speaker, multi-lingual model
 tts = TTS(model_name="tts_models/multilingual/multi-dataset/xtts_v2", progress_bar=False).to(device)
 client = OpenAI()
+# Importing required classes
+from pypdf import PdfReader
+
+# Creating a PDF reader object
+pdf_path = './Booklet Ab 11  Unit 1 2024.pdf'  # Replace with your PDF file path
+reader = PdfReader(pdf_path)
+
+# Printing the number of pages in the PDF file
+print(f'The PDF has {len(reader.pages)} pages.')
+
+curriculum_content = ''
+# Iterating through each page to extract and print the text
+for page_number in range(len(reader.pages)):
+    page = reader.pages[page_number]
+    text = page.extract_text()  # Extracting text from the page
+    curriculum_content = curriculum_content+ " " + text
+
 @app.route('/api/chat', methods=['POST'])
 def chat_with_gpt():
-    data = request.get_json()
-    user_prompt = data.get("text", "")
+    # Keep user input handling but ignore it
+    data = request.get_json()  # This will still receive user input
+    user_prompt = data.get("text", "")  # Not used but still kept in the code
     language = data.get("language", "es")
     speaker_wav = data.get("speaker_wav", 'esp1.wav')
-
+    
     try:
-        # Construct prompt for practice listening exercise with varied question types
+        # Construct prompt for practice listening exercise using fixed curriculum content
         prompt = f"""
         You are a Spanish language teacher preparing a listening practice exercise. 
 
-        Based on the following curriculum content or topic, please create a listening practice exercise. Use Spanish for the text and question content, but keep the structure and formatting labels in English, like "**Text**", "**Multiple-Choice Questions**", and "**Answers**".
+        Based on the following curriculum content or topic, please create a listening practice exercise. Use Spanish for the text and question content, but keep the structure and formatting labels in English, like "**Text**", "**Multiple-Choice Questions**", and "**Answers**". 
 
         Format it as follows:
 
@@ -43,19 +61,19 @@ def chat_with_gpt():
         4. **Answers**: Provide the correct answers at the bottom for the teacher’s reference.
 
         ### Curriculum Content or Topic:
-        "{user_prompt}"
+        "{curriculum_content}"
 
         ### Output Format:
-        - **Text**: [The listening text in Spanish]
-        - **Multiple-Choice Questions**:
+        **Text**: [The listening text in Spanish]
+        **Multiple-Choice Questions**:
           - MCQ 1: [Question in Spanish with options A, B, C, D]
           - MCQ 2: [Optional question in Spanish with options A, B, C, D]
           - MCQ 3: [Optional question in Spanish with options A, B, C, D]
-        - **Open-Ended Questions with Blanks**:
+        **Open-Ended Questions with Blanks**:
           - Question 1: [Text in Spanish with blank spaces]
           - Question 2: [Text in Spanish with blank spaces]
           - Question 3: [Text in Spanish with blank spaces]
-        - **Answers**:
+        **Answers**:
           - MCQ 1 Answer: [Correct option in Spanish]
           - MCQ 2 Answer: [Correct option in Spanish]
           - MCQ 3 Answer: [Correct option in Spanish]
@@ -78,6 +96,7 @@ def chat_with_gpt():
 
         # Extract only the listening text for TTS
         listening_text = extract_listening_text(assistant_message)
+        print(assistant_message)
         print('listening text--------------')
         print(listening_text)
         # Generate TTS audio with voice cloning if speaker_wav is provided
@@ -95,8 +114,8 @@ def chat_with_gpt():
 # Helper function to extract the listening text from the GPT response
 def extract_listening_text(response_text):
     # Assuming the listening text is labeled under "- **Text**:"
-    start_marker = "- **Text**:"
-    end_marker = "- **Multiple-Choice Questions**:"
+    start_marker = "**Text**:"
+    end_marker = "**Multiple-Choice Questions**:"
     start_index = response_text.find(start_marker) + len(start_marker)
     end_index = response_text.find(end_marker)
     listening_text = response_text[start_index:end_index].strip()
