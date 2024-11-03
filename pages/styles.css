@@ -1,0 +1,29 @@
+body {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.general-container {
+  max-width: 1100px; /* Controls the overall max width */
+  margin: 0 auto; /* Centers the general container */
+  padding: 2rem;
+}
+
+.main-container {
+  max-width: 700px; /* Keeps the form narrower within the general container */
+  margin: 0 auto;
+}
+
+.output-container {
+  max-width: 900px; /* Wider container for output text and audio */
+  margin: 2rem auto;
+  padding: 1rem;
+}
+
+.output-box {
+  background-color: #444; /* Darker background for output text */
+  color: #fff;
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
