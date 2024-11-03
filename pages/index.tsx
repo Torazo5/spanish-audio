@@ -1,6 +1,6 @@
-// nextjs-frontend/pages/index.tsx
 import { Container, Typography, Box, TextField, Button } from "@mui/material";
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
 
 export default function Home() {
   const [inputText, setInputText] = useState("");
@@ -42,10 +42,9 @@ export default function Home() {
       <Box
         display="flex"
         flexDirection="column"
-        alignItems="center"
-        justifyContent="center"
-        minHeight="100vh"
+        alignItems="stretch"
         gap={2}
+        mt={4}
       >
         <Typography variant="h4" align="center">
           Chat with GPT-4
@@ -61,10 +60,16 @@ export default function Home() {
           Submit
         </Button>
         {responseText && (
-          <Box mt={2} p={2} bgcolor="grey.800" borderRadius={4}>
-            <Typography variant="body1" align="center" color="text.primary">
-              {responseText}
-            </Typography>
+          <Box
+            mt={2}
+            p={2}
+            bgcolor="grey.800"
+            borderRadius={4}
+            width="100%"
+            maxHeight="60vh"
+            overflow="auto"
+          >
+            <ReactMarkdown>{responseText}</ReactMarkdown>
           </Box>
         )}
         {audioUrl && (

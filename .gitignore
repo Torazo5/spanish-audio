@@ -9,7 +9,7 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
-flask-backend/venv/
+/venv/
 # testing
 /coverage
 
