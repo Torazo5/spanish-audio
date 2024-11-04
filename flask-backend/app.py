@@ -41,6 +41,35 @@ for page_number in range(len(reader.pages)):
     page = reader.pages[page_number]
     text = page.extract_text()  # Extracting text from the page
     curriculum_content += " " + text
+def summarize_curriculum(curriculum_content):
+    summarize_prompt = f"""
+    You are an assistant that summarizes educational curriculum content.
+
+    Please summarize the following curriculum content into an extensive list of key topics, each accompanied by a brief example.
+    There is no need to create number lists or bold words, just information. 
+    ### Curriculum Content:
+    {curriculum_content}
+
+    ### Summary:
+    """
+
+    try:
+        completion = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are ChatGPT, a large language model trained by OpenAI."},
+                {"role": "user", "content": summarize_prompt}
+            ],
+            max_tokens=1000  # Adjust based on the desired summary length
+        )
+        summary = completion.choices[0].message.content
+        return summary
+    except Exception as e:
+        print(f"Error during summarization: {e}")
+        return None
+
+curriculum = summarize_curriculum(curriculum_content)
+print(curriculum)
 
 @app.route('/api/chat', methods=['POST'])
 def chat_with_gpt():
@@ -57,6 +86,11 @@ You are a Spanish language teacher preparing a listening practice exercise.
 Based on the following curriculum content or topic, please create a listening practice exercise.
 
 Use Spanish for the text and question content, but keep the JSON keys in English.
+
+Ensure that:
+- There are between 3 and 5 multiple-choice questions.
+- There are between 4 and 5 open-ended questions.
+- All questions are directly related to the listening text and do not ask personal or unrelated questions.
 
 Format it as a JSON object with the following structure:
 
@@ -93,14 +127,14 @@ Format it as a JSON object with the following structure:
 }}
 
 ### Curriculum Content or Topic:
-"{curriculum_content}"
+"{curriculum}"
 
 Please output only the JSON object and ensure it is valid JSON without any additional text.
 """
 
         # Get GPT-4 response with prompt engineering
         completion = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": prompt}
@@ -188,7 +222,7 @@ Determine if the user's answer is correct based solely on the listening text and
 """
 
             completion = client.chat.completions.create(
-                model="gpt-4",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "user", "content": prompt}
                 ]
@@ -231,7 +265,7 @@ Determine if the user's answer is correct based solely on the listening text and
 """
 
             completion = client.chat.completions.create(
-                model="gpt-4",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "user", "content": prompt}
                 ]
