@@ -1,10 +1,10 @@
 import os
-import json  # Import json module
+import json
 import torch
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from TTS.api import TTS
-from openai import OpenAI
+from openai import OpenAI  # Adjusted import for OpenAI
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -21,6 +21,8 @@ else:
 
 # Initialize TTS with a multi-speaker, multi-lingual model
 tts = TTS(model_name="tts_models/multilingual/multi-dataset/xtts_v2", progress_bar=False).to(device)
+
+# Initialize OpenAI client
 client = OpenAI()
 
 # Importing required classes
@@ -131,6 +133,123 @@ Please output only the JSON object and ensure it is valid JSON without any addit
 def get_audio():
     audio_path = "output.wav"
     return send_file(audio_path, mimetype="audio/wav")
+
+# New endpoint to handle submitted answers
+@app.route('/api/submit_answers', methods=['POST'])
+def submit_answers():
+    data = request.get_json()
+    exercise_data = data.get('exercise_data')
+    user_answers = data.get('user_answers')
+
+    try:
+        listening_text = exercise_data['text']
+        feedback = {'mcq_feedback': [], 'open_ended_feedback': []}
+
+        print("Received exercise data:", exercise_data)  # Debug log
+        print("Received user answers:", user_answers)  # Debug log
+
+        # Evaluate Multiple-Choice Questions
+        mcq_questions = exercise_data.get('multiple_choice_questions', [])
+        mcq_correct_answers = exercise_data.get('answers', {}).get('multiple_choice', [])
+        user_mcq_answers = user_answers.get('mcq_answers', [])
+
+        print("MCQ questions:", mcq_questions)  # Debug log
+        print("Correct MCQ answers:", mcq_correct_answers)  # Debug log
+        print("User MCQ answers:", user_mcq_answers)  # Debug log
+
+        for idx, (question_data, user_answer) in enumerate(zip(mcq_questions, user_mcq_answers)):
+            question = question_data['question']
+            options = question_data['options']
+            print(f"Processing MCQ {idx + 1}:")  # Debug log
+            print("Question:", question)  # Debug log
+            print("Options:", options)  # Debug log
+            print("User selected option:", user_answer)  # Debug log
+
+            # Prepare the prompt for GPT-4
+            prompt = f"""
+You are an assistant that evaluates answers to listening comprehension questions.
+
+Given the following listening text in Spanish:
+
+"{listening_text}"
+
+And the following multiple-choice question:
+
+Question: "{question}"
+Options:
+A: {options['A']}
+B: {options['B']}
+C: {options['C']}
+D: {options['D']}
+
+The user selected option: "{user_answer}"
+
+Determine if the user's answer is correct based solely on the listening text and question. Respond with "Correct" or "Incorrect" and provide a brief explanation in English.
+"""
+
+            completion = client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            evaluation = completion.choices[0].message.content.strip()
+            print("GPT-4 evaluation response:", evaluation)  # Debug log
+            feedback['mcq_feedback'].append({
+                'question_index': idx,
+                'evaluation': evaluation
+            })
+
+        # Evaluate Open-Ended Questions
+        open_ended_questions = exercise_data.get('open_ended_questions', [])
+        user_open_ended_answers = user_answers.get('open_ended_answers', [])
+
+        print("Open-ended questions:", open_ended_questions)  # Debug log
+        print("User open-ended answers:", user_open_ended_answers)  # Debug log
+
+        for idx, (question_data, user_answer) in enumerate(zip(open_ended_questions, user_open_ended_answers)):
+            question = question_data['question']
+            print(f"Processing Open-ended Question {idx + 1}:")  # Debug log
+            print("Question:", question)  # Debug log
+            print("User answer:", user_answer)  # Debug log
+
+            # Prepare the prompt for GPT-4
+            prompt = f"""
+You are an assistant that evaluates answers to listening comprehension questions.
+
+Given the following listening text in Spanish:
+
+"{listening_text}"
+
+And the following open-ended question:
+
+Question: "{question}"
+
+The user's answer: "{user_answer}"
+
+Determine if the user's answer is correct based solely on the listening text and question. Respond with "Correct" or "Incorrect" and provide a brief explanation in English.
+"""
+
+            completion = client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            evaluation = completion.choices[0].message.content.strip()
+            print("GPT-4 evaluation response:", evaluation)  # Debug log
+            feedback['open_ended_feedback'].append({
+                'question_index': idx,
+                'evaluation': evaluation
+            })
+
+        # Return the feedback to the frontend
+        print("Feedback to return:", feedback)  # Debug log
+        return jsonify({'feedback': feedback})
+
+    except Exception as e:
+        print("Error during answer evaluation:", e)  # Detailed error log
+        return jsonify({"error": "An error occurred while evaluating the answers"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -4,7 +4,6 @@ import {
   Box,
   Button,
   FormControl,
-  FormLabel,
   RadioGroup,
   FormControlLabel,
   Radio,
@@ -20,6 +19,9 @@ export default function Home() {
   // State to store user's answers
   const [mcqAnswers, setMcqAnswers] = useState<string[]>([]);
   const [openEndedAnswers, setOpenEndedAnswers] = useState<string[]>([]);
+
+  // State to store feedback from the backend
+  const [feedback, setFeedback] = useState<any>(null);
 
   const handleSubmit = async () => {
     try {
@@ -39,6 +41,7 @@ export default function Home() {
         // Initialize answers arrays based on the number of questions
         setMcqAnswers(new Array(data.data.multiple_choice_questions.length).fill(''));
         setOpenEndedAnswers(new Array(data.data.open_ended_questions.length).fill(''));
+        setFeedback(null); // Reset feedback
       } else {
         setExerciseData(null);
       }
@@ -69,12 +72,33 @@ export default function Home() {
     setOpenEndedAnswers(updatedAnswers);
   };
 
-  // Function to submit answers to the backend (to be implemented)
-  const handleSubmitAnswers = () => {
-    // For now, just log the answers
-    console.log('MCQ Answers:', mcqAnswers);
-    console.log('Open-Ended Answers:', openEndedAnswers);
-    // TODO: Send answers to backend via fetch POST request
+  // Function to submit answers to the backend
+  const handleSubmitAnswers = async () => {
+    try {
+      const response = await fetch("http://127.0.0.1:5000/api/submit_answers", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          exercise_data: exerciseData,
+          user_answers: {
+            mcq_answers: mcqAnswers,
+            open_ended_answers: openEndedAnswers,
+          },
+        }),
+      });
+
+      const result = await response.json();
+      if (response.ok) {
+        // Store the feedback received from the backend
+        setFeedback(result.feedback);
+      } else {
+        console.error("Error:", result.error);
+      }
+    } catch (error) {
+      console.error("An error occurred while submitting answers:", error);
+    }
   };
 
   return (
@@ -139,6 +163,12 @@ export default function Home() {
                           )}
                         </RadioGroup>
                       </FormControl>
+                      {/* Display feedback if available */}
+                      {feedback && feedback.mcq_feedback[index] && (
+                        <Typography variant="body2" color="textSecondary">
+                          Feedback: {feedback.mcq_feedback[index].evaluation}
+                        </Typography>
+                      )}
                     </Box>
                   )
                 )}
@@ -161,6 +191,12 @@ export default function Home() {
                         value={openEndedAnswers[index] || ''}
                         onChange={(e) => handleOpenEndedAnswerChange(index, e.target.value)}
                       />
+                      {/* Display feedback if available */}
+                      {feedback && feedback.open_ended_feedback[index] && (
+                        <Typography variant="body2" color="textSecondary">
+                          Feedback: {feedback.open_ended_feedback[index].evaluation}
+                        </Typography>
+                      )}
                     </Box>
                   )
                 )}
